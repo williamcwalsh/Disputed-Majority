@@ -460,6 +460,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProvStats
   vote: 
   conflict: 0
+  questionMarkSprite: {fileID: -1069391008461655575, guid: e46c0a13e23904f62a7b40781c1498c3, type: 3}
+  questionScale: 0.35
+  questionOffset: {x: 0, y: 0}
+  sortingOrderOffset: 10
 --- !u!1 &40905301
 GameObject:
   m_ObjectHideFlags: 0
@@ -922,6 +926,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProvStats
   vote: 
   conflict: 0
+  questionMarkSprite: {fileID: -1069391008461655575, guid: e46c0a13e23904f62a7b40781c1498c3, type: 3}
+  questionScale: 0.35
+  questionOffset: {x: 0, y: 0}
+  sortingOrderOffset: 10
 --- !u!1 &152495534
 GameObject:
   m_ObjectHideFlags: 0
@@ -2247,6 +2255,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProvStats
   vote: 
   conflict: 0
+  questionMarkSprite: {fileID: -1069391008461655575, guid: e46c0a13e23904f62a7b40781c1498c3, type: 3}
+  questionScale: 0.35
+  questionOffset: {x: 0, y: 0}
+  sortingOrderOffset: 10
 --- !u!1 &705266176
 GameObject:
   m_ObjectHideFlags: 0
@@ -3688,6 +3700,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProvStats
   vote: 
   conflict: 0
+  questionMarkSprite: {fileID: -1069391008461655575, guid: e46c0a13e23904f62a7b40781c1498c3, type: 3}
+  questionScale: 0.35
+  questionOffset: {x: 0, y: 0}
+  sortingOrderOffset: 10
 --- !u!1 &1130248261
 GameObject:
   m_ObjectHideFlags: 0
@@ -4612,6 +4628,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProvStats
   vote: 
   conflict: 0
+  questionMarkSprite: {fileID: -1069391008461655575, guid: e46c0a13e23904f62a7b40781c1498c3, type: 3}
+  questionScale: 0.35
+  questionOffset: {x: 0, y: 0}
+  sortingOrderOffset: 10
 --- !u!1 &1407063611
 GameObject:
   m_ObjectHideFlags: 0
@@ -4928,6 +4948,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProvStats
   vote: 
   conflict: 0
+  questionMarkSprite: {fileID: -1069391008461655575, guid: e46c0a13e23904f62a7b40781c1498c3, type: 3}
+  questionScale: 0.35
+  questionOffset: {x: 0, y: 0}
+  sortingOrderOffset: 10
 --- !u!1 &1438630769
 GameObject:
   m_ObjectHideFlags: 0
@@ -5687,6 +5711,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProvStats
   vote: 
   conflict: 0
+  questionMarkSprite: {fileID: -1069391008461655575, guid: e46c0a13e23904f62a7b40781c1498c3, type: 3}
+  questionScale: 0.35
+  questionOffset: {x: 0, y: 0}
+  sortingOrderOffset: 10
 --- !u!1 &1737577875
 GameObject:
   m_ObjectHideFlags: 0
@@ -6903,6 +6931,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProvStats
   vote: 
   conflict: 0
+  questionMarkSprite: {fileID: -1069391008461655575, guid: e46c0a13e23904f62a7b40781c1498c3, type: 3}
+  questionScale: 0.35
+  questionOffset: {x: 0, y: 0}
+  sortingOrderOffset: 10
 --- !u!1 &2105619990
 GameObject:
   m_ObjectHideFlags: 0

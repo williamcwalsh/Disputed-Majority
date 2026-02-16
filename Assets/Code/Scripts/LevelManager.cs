@@ -9,6 +9,10 @@ public class LevelManager : MonoBehaviour
     private static readonly Color CampaignBlue = new Color(45f / 255f, 72f / 255f, 178f / 255f);
     private static readonly Color CampaignGreen = new Color(85f / 255f, 173f / 255f, 64f / 255f);
 
+    public int RedHp = 5;
+    public int BlueHp = 5;
+    public int GreenHp = 5;
+
     public float players;
     private int turn = 1;
     public float currentProvidence = -1;
@@ -20,73 +24,100 @@ public class LevelManager : MonoBehaviour
     [SerializeField] private GameObject blueTurn;
     [SerializeField] private GameObject greenTurn;
 
-
     private int currentCardIndex = -1;
     private int drawIndex = 0;
-
-    public void SetSpriteColor(string objectName, Color color)
-    {
-        var go = GameObject.Find(objectName);
-        if (go == null)
-        {
-            Debug.LogError($"SetSpriteColor: No GameObject named '{objectName}' found in scene.");
-            return;
-        }
-
-        var sr = go.GetComponent<SpriteRenderer>();
-        if (sr == null)
-        {
-            Debug.LogError($"SetSpriteColor: GameObject '{objectName}' has no SpriteRenderer.");
-            return;
-        }
-
-        sr.color = color;
-    }
+    private bool turnLocked = false;
 
     void Start()
     {
         if (deck != null)
         {
             for (int i = 0; i < deck.Length; i++)
-            {
-                if (deck[i] != null)
-                    deck[i].SetActive(false);
-            }
+                if (deck[i] != null) deck[i].SetActive(false);
         }
 
         ShuffleDeck();
-        DrawNextCard();
+        UpdateTurnUI();
+        StartTurn();
     }
 
     void Update()
     {
         if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+            EndTurn();
+
+        HandleProvinceClick();
+    }
+
+    private void HandleProvinceClick()
+    {
+        if (Mouse.current == null) return;
+        if (!Mouse.current.leftButton.wasPressedThisFrame) return;
+
+        Camera cam = Camera.main;
+        if (cam == null)
         {
-            turn++;
-            Debug.Log("Turn: " + turn);
-            DrawNextCard();
+            Debug.LogError("HandleProvinceClick: no Camera.main (tag your camera MainCamera)");
+            return;
         }
-        if (turn>3){
-            turn =1;
-        }
-        if (turn == 1){
-            Debug.Log("Red Turn");
-            redTurn.SetActive(true);
-            blueTurn.SetActive(false);
-            greenTurn.SetActive(false);
-        }
-        if (turn == 2){
-            Debug.Log("Blue Turn");
-            redTurn.SetActive(false);
-            blueTurn.SetActive(true);
-            greenTurn.SetActive(false);
-        }
-        if (turn == 3){
-            Debug.Log("Green Turn");
-            redTurn.SetActive(false);
-            blueTurn.SetActive(false);
-            greenTurn.SetActive(true);
-        }
+
+        Vector3 w = cam.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+        Vector2 p = new Vector2(w.x, w.y);
+
+        Collider2D hit = Physics2D.OverlapPoint(p);
+        if (hit == null) return;
+
+        ProvStats prov = hit.GetComponent<ProvStats>();
+        if (prov == null) prov = hit.GetComponentInParent<ProvStats>();
+        if (prov == null) return;
+
+        Debug.Log("Clicked province: " + prov.gameObject.name);
+        ResolveChallenge(prov);
+    }
+
+    public Color VoteToColor(string v)
+    {
+        if (v == "red") return CampaignRed;
+        if (v == "blue") return CampaignBlue;
+        if (v == "green") return CampaignGreen;
+        return Color.white;
+    }
+
+    private void StartTurn()
+    {
+        turnLocked = false;
+        DrawNextCard();
+    }
+
+    private void EndTurn()
+    {
+        if (!turnLocked) return;
+
+        turn++;
+        if (turn > 3) turn = 1;
+
+        UpdateTurnUI();
+        StartTurn();
+    }
+
+    private void UpdateTurnUI()
+    {
+        if (redTurn != null) redTurn.SetActive(turn == 1);
+        if (blueTurn != null) blueTurn.SetActive(turn == 2);
+        if (greenTurn != null) greenTurn.SetActive(turn == 3);
+
+        if (turn == 1) Debug.Log("Red Turn");
+        else if (turn == 2) Debug.Log("Blue Turn");
+        else Debug.Log("Green Turn");
+    }
+
+    private void HideActiveCard()
+    {
+        if (deck == null) return;
+        if (currentCardIndex < 0 || currentCardIndex >= deck.Length) return;
+        if (deck[currentCardIndex] == null) return;
+
+        deck[currentCardIndex].SetActive(false);
     }
 
     private void DrawNextCard()
@@ -100,13 +131,11 @@ public class LevelManager : MonoBehaviour
         if (drawIndex >= deck.Length)
         {
             Debug.Log("Deck empty. No more cards to draw.");
-            if (currentCardIndex != -1 && deck[currentCardIndex] != null)
-                deck[currentCardIndex].SetActive(false);
+            HideActiveCard();
             return;
         }
 
-        if (currentCardIndex != -1 && deck[currentCardIndex] != null)
-            deck[currentCardIndex].SetActive(false);
+        HideActiveCard();
 
         if (deck[drawIndex] != null)
             deck[drawIndex].SetActive(true);
@@ -137,22 +166,10 @@ public class LevelManager : MonoBehaviour
 
         Image img = ballot.GetComponent<Image>();
         if (img != null)
-        {
-            if (voteColor == "red") img.color = CampaignRed;
-            else if (voteColor == "blue") img.color = CampaignBlue;
-            else if (voteColor == "green") img.color = CampaignGreen;
-        }
-        else
-        {
-            Debug.LogError($"SetBallotUI: 'Ballot1' on '{cardRoot.name}' has no Image component");
-        }
+            img.color = VoteToColor(voteColor);
 
         Transform votesTextTf = ballot.transform.Find("Votes Text");
-        if (votesTextTf == null)
-        {
-            Debug.LogError($"SetBallotUI: 'Ballot1' on '{cardRoot.name}' has no child named 'Votes Text'");
-            return;
-        }
+        if (votesTextTf == null) return;
 
         TMP_Text tmp = votesTextTf.GetComponent<TMP_Text>();
         if (tmp != null)
@@ -163,12 +180,7 @@ public class LevelManager : MonoBehaviour
 
         Text legacy = votesTextTf.GetComponent<Text>();
         if (legacy != null)
-        {
             legacy.text = "Votes: " + voteColor.ToUpper();
-            return;
-        }
-
-        Debug.LogError($"SetBallotUI: 'Votes Text' on '{cardRoot.name}' has no TMP_Text or Text component");
     }
 
     private void ShuffleDeck()
@@ -184,46 +196,84 @@ public class LevelManager : MonoBehaviour
         }
     }
 
-    public void setP1Red()
+    private void PickProvince(string provinceName, Color color, string vote)
     {
-        SetSpriteColor("p1", CampaignRed);
+        if (turnLocked) return;
 
-        GameObject p1 = GameObject.Find("p1");
-        if (p1 == null) return;
+        GameObject p = GameObject.Find(provinceName);
+        if (p == null) return;
 
-        ProvStats stats = p1.GetComponent<ProvStats>();
+        var sr = p.GetComponent<SpriteRenderer>();
+        if (sr != null) sr.color = color;
+
+        ProvStats stats = p.GetComponent<ProvStats>();
         if (stats != null)
-            stats.setVote("red", realVote);
+            stats.setVote(vote, realVote, turn);
+
+        HideActiveCard();
+        turnLocked = true;
     }
 
-    public void setP1Blue() { SetSpriteColor("p1", CampaignBlue); }
-    public void setP1Green() { SetSpriteColor("p1", CampaignGreen); }
+    public void ResolveChallenge(ProvStats prov)
+    {
+        if (prov == null) return;
 
-    public void setP2Red() { SetSpriteColor("p2", CampaignRed); }
-    public void setP2Blue() { SetSpriteColor("p2", CampaignBlue); }
-    public void setP2Green() { SetSpriteColor("p2", CampaignGreen); }
+        if (!prov.TryConsumeChallenge())
+        {
+            Debug.Log("Challenge ignored (already resolved) for " + prov.gameObject.name);
+            return;
+        }
 
-    public void setP3Red() { SetSpriteColor("p3", CampaignRed); }
-    public void setP3Blue() { SetSpriteColor("p3", CampaignBlue); }
-    public void setP3Green() { SetSpriteColor("p3", CampaignGreen); }
+        bool conflict = prov.IsConflict();
+        int liarTurn = prov.GetLiarTurn();
 
-    public void setP4Red() { SetSpriteColor("p4", CampaignRed); }
-    public void setP4Blue() { SetSpriteColor("p4", CampaignBlue); }
-    public void setP4Green() { SetSpriteColor("p4", CampaignGreen); }
+        Debug.Log($"Challenge on {prov.gameObject.name}: vote={prov.vote} realVote={prov.GetRealVote()} conflict={conflict} liarTurn={liarTurn}");
 
-    public void setP5Red() { SetSpriteColor("p5", CampaignRed); }
-    public void setP5Blue() { SetSpriteColor("p5", CampaignBlue); }
-    public void setP5Green() { SetSpriteColor("p5", CampaignGreen); }
+        if (conflict)
+        {
+            if (liarTurn == 1) RedHp = Mathf.Max(0, RedHp - 1);
+            else if (liarTurn == 2) BlueHp = Mathf.Max(0, BlueHp - 1);
+            else if (liarTurn == 3) GreenHp = Mathf.Max(0, GreenHp - 1);
 
-    public void setP6Red() { SetSpriteColor("p6", CampaignRed); }
-    public void setP6Blue() { SetSpriteColor("p6", CampaignBlue); }
-    public void setP6Green() { SetSpriteColor("p6", CampaignGreen); }
+            Debug.Log($"HP loss applied to player {liarTurn} => R:{RedHp} B:{BlueHp} G:{GreenHp}");
+        }
+        else
+        {
+            Debug.Log("No conflict, no HP change.");
+        }
 
-    public void setP7Red() { SetSpriteColor("p7", CampaignRed); }
-    public void setP7Blue() { SetSpriteColor("p7", CampaignBlue); }
-    public void setP7Green() { SetSpriteColor("p7", CampaignGreen); }
+        prov.RevealTruth(this);
+    }
 
-    public void setP8Red() { SetSpriteColor("p8", CampaignRed); }
-    public void setP8Blue() { SetSpriteColor("p8", CampaignBlue); }
-    public void setP8Green() { SetSpriteColor("p8", CampaignGreen); }
+    public void setP1Red() { PickProvince("p1", CampaignRed, "red"); }
+    public void setP1Blue() { PickProvince("p1", CampaignBlue, "blue"); }
+    public void setP1Green() { PickProvince("p1", CampaignGreen, "green"); }
+
+    public void setP2Red() { PickProvince("p2", CampaignRed, "red"); }
+    public void setP2Blue() { PickProvince("p2", CampaignBlue, "blue"); }
+    public void setP2Green() { PickProvince("p2", CampaignGreen, "green"); }
+
+    public void setP3Red() { PickProvince("p3", CampaignRed, "red"); }
+    public void setP3Blue() { PickProvince("p3", CampaignBlue, "blue"); }
+    public void setP3Green() { PickProvince("p3", CampaignGreen, "green"); }
+
+    public void setP4Red() { PickProvince("p4", CampaignRed, "red"); }
+    public void setP4Blue() { PickProvince("p4", CampaignBlue, "blue"); }
+    public void setP4Green() { PickProvince("p4", CampaignGreen, "green"); }
+
+    public void setP5Red() { PickProvince("p5", CampaignRed, "red"); }
+    public void setP5Blue() { PickProvince("p5", CampaignBlue, "blue"); }
+    public void setP5Green() { PickProvince("p5", CampaignGreen, "green"); }
+
+    public void setP6Red() { PickProvince("p6", CampaignRed, "red"); }
+    public void setP6Blue() { PickProvince("p6", CampaignBlue, "blue"); }
+    public void setP6Green() { PickProvince("p6", CampaignGreen, "green"); }
+
+    public void setP7Red() { PickProvince("p7", CampaignRed, "red"); }
+    public void setP7Blue() { PickProvince("p7", CampaignBlue, "blue"); }
+    public void setP7Green() { PickProvince("p7", CampaignGreen, "green"); }
+
+    public void setP8Red() { PickProvince("p8", CampaignRed, "red"); }
+    public void setP8Blue() { PickProvince("p8", CampaignBlue, "blue"); }
+    public void setP8Green() { PickProvince("p8", CampaignGreen, "green"); }
 }
