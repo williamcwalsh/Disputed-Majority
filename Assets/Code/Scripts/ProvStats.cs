@@ -94,6 +94,11 @@ public class ProvStats : MonoBehaviour
 
         questionGO.SetActive(true);
     }
+    public bool HasChallengeAvailable()
+    {
+        return challengeAvailable;
+    }
+
 
     public void HideQuestionMark()
     {

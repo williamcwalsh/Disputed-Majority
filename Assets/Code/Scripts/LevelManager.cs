@@ -9,9 +9,9 @@ public class LevelManager : MonoBehaviour
     private static readonly Color CampaignBlue = new Color(45f / 255f, 72f / 255f, 178f / 255f);
     private static readonly Color CampaignGreen = new Color(85f / 255f, 173f / 255f, 64f / 255f);
 
-    public int RedHp = 5;
-    public int BlueHp = 5;
-    public int GreenHp = 5;
+    public int RedHp = 3;
+    public int BlueHp = 3;
+    public int GreenHp = 3;
 
     public float players;
     private int turn = 1;
@@ -26,7 +26,15 @@ public class LevelManager : MonoBehaviour
 
     private int currentCardIndex = -1;
     private int drawIndex = 0;
+
     private bool turnLocked = false;
+    private bool hasDrawnThisTurn = false;
+    private bool hasAccusedThisTurn = false;
+    private bool accusationWindowOpen = true;
+
+    private static readonly string TurnNameRed = "Red";
+    private static readonly string TurnNameBlue = "Blue";
+    private static readonly string TurnNameGreen = "Green";
 
     void Start()
     {
@@ -46,10 +54,23 @@ public class LevelManager : MonoBehaviour
         if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
             EndTurn();
 
-        HandleProvinceClick();
+        if (accusationWindowOpen && !turnLocked)
+            HandleAccuseClick();
     }
 
-    private void HandleProvinceClick()
+    public void StartDraw()
+    {
+        if (turnLocked) return;
+        if (hasDrawnThisTurn) return;
+        if (hasAccusedThisTurn) return;
+
+        hasDrawnThisTurn = true;
+        accusationWindowOpen = false;
+
+        DrawNextCard();
+    }
+
+    private void HandleAccuseClick()
     {
         if (Mouse.current == null) return;
         if (!Mouse.current.leftButton.wasPressedThisFrame) return;
@@ -57,7 +78,7 @@ public class LevelManager : MonoBehaviour
         Camera cam = Camera.main;
         if (cam == null)
         {
-            Debug.LogError("HandleProvinceClick: no Camera.main (tag your camera MainCamera)");
+            Debug.LogError("HandleAccuseClick: no Camera.main (tag your camera MainCamera)");
             return;
         }
 
@@ -71,8 +92,17 @@ public class LevelManager : MonoBehaviour
         if (prov == null) prov = hit.GetComponentInParent<ProvStats>();
         if (prov == null) return;
 
-        Debug.Log("Clicked province: " + prov.gameObject.name);
+        if (hasAccusedThisTurn) return;
+        if (!prov.HasChallengeAvailable()) return;
+
+        Debug.Log("Accuse click: " + prov.gameObject.name);
+
+        hasAccusedThisTurn = true;
         ResolveChallenge(prov);
+
+        turnLocked = true;
+        HideActiveCard();
+        Debug.Log("Accuse complete. Press Space for next turn.");
     }
 
     public Color VoteToColor(string v)
@@ -83,10 +113,21 @@ public class LevelManager : MonoBehaviour
         return Color.white;
     }
 
+    public string TurnToName(int t)
+    {
+        if (t == 1) return TurnNameRed;
+        if (t == 2) return TurnNameBlue;
+        return TurnNameGreen;
+    }
+
     private void StartTurn()
     {
         turnLocked = false;
-        DrawNextCard();
+        hasDrawnThisTurn = false;
+        hasAccusedThisTurn = false;
+        accusationWindowOpen = true;
+
+        HideActiveCard();
     }
 
     private void EndTurn()
@@ -106,18 +147,18 @@ public class LevelManager : MonoBehaviour
         if (blueTurn != null) blueTurn.SetActive(turn == 2);
         if (greenTurn != null) greenTurn.SetActive(turn == 3);
 
-        if (turn == 1) Debug.Log("Red Turn");
-        else if (turn == 2) Debug.Log("Blue Turn");
-        else Debug.Log("Green Turn");
+        Debug.Log(TurnToName(turn) + " Turn");
     }
 
     private void HideActiveCard()
     {
         if (deck == null) return;
-        if (currentCardIndex < 0 || currentCardIndex >= deck.Length) return;
+        if (currentCardIndex == -1) return;
+        if (currentCardIndex >= deck.Length) return;
         if (deck[currentCardIndex] == null) return;
 
         deck[currentCardIndex].SetActive(false);
+        currentCardIndex = -1;
     }
 
     private void DrawNextCard()
@@ -158,11 +199,7 @@ public class LevelManager : MonoBehaviour
         if (cardRoot == null) return;
 
         Transform ballot = cardRoot.transform.Find("Ballot1");
-        if (ballot == null)
-        {
-            Debug.LogError($"SetBallotUI: '{cardRoot.name}' has no child named 'Ballot1'");
-            return;
-        }
+        if (ballot == null) return;
 
         Image img = ballot.GetComponent<Image>();
         if (img != null)
@@ -199,6 +236,7 @@ public class LevelManager : MonoBehaviour
     private void PickProvince(string provinceName, Color color, string vote)
     {
         if (turnLocked) return;
+        if (!hasDrawnThisTurn) return;
 
         GameObject p = GameObject.Find(provinceName);
         if (p == null) return;
@@ -212,22 +250,25 @@ public class LevelManager : MonoBehaviour
 
         HideActiveCard();
         turnLocked = true;
+        Debug.Log("Vote placed. Press Space for next turn.");
     }
 
     public void ResolveChallenge(ProvStats prov)
     {
         if (prov == null) return;
 
+        Debug.Log("ResolveChallenge called for " + prov.gameObject.name);
+
         if (!prov.TryConsumeChallenge())
         {
-            Debug.Log("Challenge ignored (already resolved) for " + prov.gameObject.name);
+            Debug.Log("Challenge ignored (already used) for " + prov.gameObject.name);
             return;
         }
 
         bool conflict = prov.IsConflict();
         int liarTurn = prov.GetLiarTurn();
 
-        Debug.Log($"Challenge on {prov.gameObject.name}: vote={prov.vote} realVote={prov.GetRealVote()} conflict={conflict} liarTurn={liarTurn}");
+        Debug.Log($"Challenge check: conflict={conflict} liarTurn={liarTurn} realVote={prov.GetRealVote()} vote={prov.vote}");
 
         if (conflict)
         {
@@ -235,11 +276,11 @@ public class LevelManager : MonoBehaviour
             else if (liarTurn == 2) BlueHp = Mathf.Max(0, BlueHp - 1);
             else if (liarTurn == 3) GreenHp = Mathf.Max(0, GreenHp - 1);
 
-            Debug.Log($"HP loss applied to player {liarTurn} => R:{RedHp} B:{BlueHp} G:{GreenHp}");
+            Debug.Log($"HP updated => R:{RedHp} B:{BlueHp} G:{GreenHp}");
         }
         else
         {
-            Debug.Log("No conflict, no HP change.");
+            Debug.Log("No conflict. No HP change.");
         }
 
         prov.RevealTruth(this);
