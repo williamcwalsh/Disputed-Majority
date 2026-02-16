@@ -2,8 +2,8 @@ using UnityEngine;
 
 public class ProvStats : MonoBehaviour
 {
-    public string vote;
-    private string realVote;
+    public string vote = "";
+    private string realVote = "";
     public bool conflict = false;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()

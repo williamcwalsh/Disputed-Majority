@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using TMPro;
 
 public class LevelManager : MonoBehaviour
 {
@@ -9,12 +10,16 @@ public class LevelManager : MonoBehaviour
     private static readonly Color CampaignGreen = new Color(85f / 255f, 173f / 255f, 64f / 255f);
 
     public float players;
-    private float turn = 1;
+    private int turn = 1;
     public float currentProvidence = -1;
 
     public string realVote = "";
 
     [SerializeField] private GameObject[] deck;
+    [SerializeField] private GameObject redTurn;
+    [SerializeField] private GameObject blueTurn;
+    [SerializeField] private GameObject greenTurn;
+
 
     private int currentCardIndex = -1;
     private int drawIndex = 0;
@@ -61,6 +66,27 @@ public class LevelManager : MonoBehaviour
             Debug.Log("Turn: " + turn);
             DrawNextCard();
         }
+        if (turn>3){
+            turn =1;
+        }
+        if (turn == 1){
+            Debug.Log("Red Turn");
+            redTurn.SetActive(true);
+            blueTurn.SetActive(false);
+            greenTurn.SetActive(false);
+        }
+        if (turn == 2){
+            Debug.Log("Blue Turn");
+            redTurn.SetActive(false);
+            blueTurn.SetActive(true);
+            greenTurn.SetActive(false);
+        }
+        if (turn == 3){
+            Debug.Log("Green Turn");
+            redTurn.SetActive(false);
+            blueTurn.SetActive(false);
+            greenTurn.SetActive(true);
+        }
     }
 
     private void DrawNextCard()
@@ -93,32 +119,56 @@ public class LevelManager : MonoBehaviour
         else if (roll == 1) realVote = "blue";
         else realVote = "green";
 
-        SetBallotUIColor(deck[currentCardIndex], realVote);
+        SetBallotUI(deck[currentCardIndex], realVote);
 
         Debug.Log("Drew card index: " + currentCardIndex + " | realVote: " + realVote);
     }
 
-    private void SetBallotUIColor(GameObject cardRoot, string voteColor)
+    private void SetBallotUI(GameObject cardRoot, string voteColor)
     {
         if (cardRoot == null) return;
 
         Transform ballot = cardRoot.transform.Find("Ballot1");
         if (ballot == null)
         {
-            Debug.LogError($"SetBallotUIColor: '{cardRoot.name}' has no child named 'Ballot1'");
+            Debug.LogError($"SetBallotUI: '{cardRoot.name}' has no child named 'Ballot1'");
             return;
         }
 
         Image img = ballot.GetComponent<Image>();
-        if (img == null)
+        if (img != null)
         {
-            Debug.LogError($"SetBallotUIColor: 'Ballot1' on '{cardRoot.name}' has no Image component");
+            if (voteColor == "red") img.color = CampaignRed;
+            else if (voteColor == "blue") img.color = CampaignBlue;
+            else if (voteColor == "green") img.color = CampaignGreen;
+        }
+        else
+        {
+            Debug.LogError($"SetBallotUI: 'Ballot1' on '{cardRoot.name}' has no Image component");
+        }
+
+        Transform votesTextTf = ballot.transform.Find("Votes Text");
+        if (votesTextTf == null)
+        {
+            Debug.LogError($"SetBallotUI: 'Ballot1' on '{cardRoot.name}' has no child named 'Votes Text'");
             return;
         }
 
-        if (voteColor == "red") img.color = CampaignRed;
-        else if (voteColor == "blue") img.color = CampaignBlue;
-        else if (voteColor == "green") img.color = CampaignGreen;
+        TMP_Text tmp = votesTextTf.GetComponent<TMP_Text>();
+        if (tmp != null)
+        {
+            tmp.text = "Votes: " + voteColor.ToUpper();
+            return;
+        }
+
+        Text legacy = votesTextTf.GetComponent<Text>();
+        if (legacy != null)
+        {
+            legacy.text = "Votes: " + voteColor.ToUpper();
+            return;
+        }
+
+        Debug.LogError($"SetBallotUI: 'Votes Text' on '{cardRoot.name}' has no TMP_Text or Text component");
     }
 
     private void ShuffleDeck()
