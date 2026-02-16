@@ -13,6 +13,10 @@ public class LevelManager : MonoBehaviour
     public int BlueHp = 3;
     public int GreenHp = 3;
 
+    [SerializeField] private GameObject[] redHpRects;
+    [SerializeField] private GameObject[] blueHpRects;
+    [SerializeField] private GameObject[] greenHpRects;
+
     public float players;
     private int turn = 1;
     public float currentProvidence = -1;
@@ -47,6 +51,7 @@ public class LevelManager : MonoBehaviour
         ShuffleDeck();
         UpdateTurnUI();
         StartTurn();
+        UpdateHpUI();
     }
 
     void Update()
@@ -57,6 +62,21 @@ public class LevelManager : MonoBehaviour
         if (accusationWindowOpen && !turnLocked)
             HandleAccuseClick();
     }
+
+    private void UpdateHpUI()
+    {
+        SetHpRow(redHpRects, RedHp);
+        SetHpRow(blueHpRects, BlueHp);
+        SetHpRow(greenHpRects, GreenHp);
+    }
+
+    private void SetHpRow(GameObject[] row, int hp)
+    {
+        if (row == null) return;
+        for (int i = 0; i < row.Length; i++)
+            if (row[i] != null) row[i].SetActive(i < hp);
+    }
+
 
     public void StartDraw()
     {
@@ -282,7 +302,7 @@ public class LevelManager : MonoBehaviour
         {
             Debug.Log("No conflict. No HP change.");
         }
-
+        UpdateHpUI();
         prov.RevealTruth(this);
     }
 
