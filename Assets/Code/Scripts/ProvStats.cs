@@ -37,8 +37,6 @@ public class ProvStats : MonoBehaviour
 
         challengeAvailable = true;
         ShowQuestionMark();
-
-        Debug.Log($"ProvStats setVote: {gameObject.name} vote={this.vote} realVote={this.realVote} liarTurn={liarTurn} conflict={conflict}");
     }
 
     public bool IsConflict()
@@ -65,9 +63,9 @@ public class ProvStats : MonoBehaviour
 
     public void RevealTruth(LevelManager lm)
     {
-        Debug.Log("RevealTruth: " + gameObject.name);
-
         HideQuestionMark();
+
+        vote = realVote;
 
         if (provSR == null || lm == null) return;
         provSR.color = lm.VoteToColor(realVote);

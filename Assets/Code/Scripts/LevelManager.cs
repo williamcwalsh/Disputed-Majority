@@ -115,8 +115,6 @@ public class LevelManager : MonoBehaviour
 
     private void EndGame()
     {
-        Debug.Log("END GAME CALLED");
-
         gameOver = true;
         turnLocked = true;
         accusationWindowOpen = false;
@@ -127,35 +125,19 @@ public class LevelManager : MonoBehaviour
         if (blueTurn != null) blueTurn.SetActive(false);
         if (greenTurn != null) greenTurn.SetActive(false);
 
-        int redTerr = 0, blueTerr = 0, greenTerr = 0;
-
-        var provs = FindObjectsOfType<ProvStats>();
-        for (int i = 0; i < provs.Length; i++)
-        {
-            var p = provs[i];
-            if (p == null) continue;
-
-            int ownerTurn = VoteStringToTurn(p.vote);
-            if (ownerTurn == 1) redTerr++;
-            else if (ownerTurn == 2) blueTerr++;
-            else if (ownerTurn == 3) greenTerr++;
-        }
+        GetTerritoryCounts(out int redTerr, out int blueTerr, out int greenTerr);
 
         int winnerTurn = GetWinnerByScore(redTerr, blueTerr, greenTerr);
 
-        Debug.Log($"END GAME SUMMARY | Red: {redTerr} territories, {RedHp} HP | Blue: {blueTerr} territories, {BlueHp} HP | Green: {greenTerr} territories, {GreenHp} HP");
-        Debug.Log(
-            $"GAME OVER COUNT | Terr => R:{redTerr} B:{blueTerr} G:{greenTerr} | HP => R:{RedHp} B:{BlueHp} G:{GreenHp} | winnerTurn={winnerTurn}");
+        LogScoreSummary("END GAME SUMMARY", redTerr, blueTerr, greenTerr);
 
         if (winnerTurn == 0)
         {
             ShowWinUI(0, true);
-            Debug.Log("Territory and HP tie. Showing tie UI.");
             return;
         }
 
         ShowWinUI(winnerTurn, false);
-        Debug.Log("Winner chosen by territories, then HP tiebreak.");
     }
 
     private int GetWinnerByScore(int redTerr, int blueTerr, int greenTerr)
@@ -195,6 +177,30 @@ public class LevelManager : MonoBehaviour
         return 0;
     }
 
+    private void GetTerritoryCounts(out int redTerr, out int blueTerr, out int greenTerr)
+    {
+        redTerr = 0;
+        blueTerr = 0;
+        greenTerr = 0;
+
+        var provs = FindObjectsOfType<ProvStats>();
+        for (int i = 0; i < provs.Length; i++)
+        {
+            var p = provs[i];
+            if (p == null) continue;
+
+            int ownerTurn = VoteStringToTurn(p.vote);
+            if (ownerTurn == 1) redTerr++;
+            else if (ownerTurn == 2) blueTerr++;
+            else if (ownerTurn == 3) greenTerr++;
+        }
+    }
+
+    private void LogScoreSummary(string prefix, int redTerr, int blueTerr, int greenTerr)
+    {
+        Debug.Log($"{prefix} | Red: {redTerr} territories, {RedHp} HP | Blue: {blueTerr} territories, {BlueHp} HP | Green: {greenTerr} territories, {GreenHp} HP");
+    }
+
     private void UpdateHpUI()
     {
         SetHpRow(redHpRects, RedHp);
@@ -211,8 +217,6 @@ public class LevelManager : MonoBehaviour
 
     public void StartDraw()
     {
-        Debug.Log($"StartDraw called | gameOver={gameOver} | turnLocked={turnLocked} | hasDrawn={hasDrawnThisTurn} | hasAccused={hasAccusedThisTurn}");
-
         if (gameOver) return;
         if (turnLocked) return;
         if (hasDrawnThisTurn) return;
@@ -231,10 +235,7 @@ public class LevelManager : MonoBehaviour
 
         Camera cam = Camera.main;
         if (cam == null)
-        {
-            Debug.LogError("HandleAccuseClick: no Camera.main (tag your camera MainCamera)");
             return;
-        }
 
         Vector3 w = cam.ScreenToWorldPoint(Mouse.current.position.ReadValue());
         Vector2 p = new Vector2(w.x, w.y);
@@ -249,14 +250,11 @@ public class LevelManager : MonoBehaviour
         if (hasAccusedThisTurn) return;
         if (!prov.HasChallengeAvailable()) return;
 
-        Debug.Log("Accuse click: " + prov.gameObject.name);
-
         hasAccusedThisTurn = true;
         ResolveChallenge(prov);
 
         turnLocked = true;
         HideActiveCard();
-        Debug.Log("Accuse complete. Press Space for next turn.");
     }
 
     private bool IsPlayerAlive(int playerTurn)
@@ -296,6 +294,9 @@ public class LevelManager : MonoBehaviour
     {
         if (!turnLocked) return;
 
+        GetTerritoryCounts(out int redTerr, out int blueTerr, out int greenTerr);
+        LogScoreSummary("TURN SUMMARY", redTerr, blueTerr, greenTerr);
+
         int safety = 0;
 
         do
@@ -310,7 +311,6 @@ public class LevelManager : MonoBehaviour
 
         if (!IsPlayerAlive(turn))
         {
-            Debug.Log("No players alive. Game over.");
             EndGame();
             return;
         }
@@ -324,8 +324,6 @@ public class LevelManager : MonoBehaviour
         if (redTurn != null) redTurn.SetActive(turn == 1);
         if (blueTurn != null) blueTurn.SetActive(turn == 2);
         if (greenTurn != null) greenTurn.SetActive(turn == 3);
-
-        Debug.Log(TurnToName(turn) + " Turn");
     }
 
     private void HideActiveCard()
@@ -341,40 +339,23 @@ public class LevelManager : MonoBehaviour
 
     private void DrawNextCard()
     {
-        Debug.Log($"DrawNextCard CALLED | drawIndex={drawIndex} | deckLength={(deck == null ? -1 : deck.Length)} | gameOver={gameOver}");
-
         if (deck == null || deck.Length == 0)
-        {
-            Debug.LogWarning("Deck is null or empty.");
             return;
-        }
 
         if (drawIndex >= deck.Length)
         {
-            Debug.Log("Deck empty condition TRIGGERED (drawIndex >= deck.Length).");
             HideActiveCard();
             EndGame();
             return;
         }
 
-        Debug.Log($"Drawing card at index {drawIndex}");
-
         HideActiveCard();
 
         if (deck[drawIndex] != null)
-        {
-            Debug.Log($"Activating card {deck[drawIndex].name}");
             deck[drawIndex].SetActive(true);
-        }
-        else
-        {
-            Debug.LogWarning($"deck[{drawIndex}] is NULL");
-        }
 
         currentCardIndex = drawIndex;
         drawIndex++;
-
-        Debug.Log($"After increment | drawIndex={drawIndex}");
 
         int roll = Random.Range(0, 3);
         if (roll == 0) realVote = "red";
@@ -382,8 +363,6 @@ public class LevelManager : MonoBehaviour
         else realVote = "green";
 
         SetBallotUI(deck[currentCardIndex], realVote);
-
-        Debug.Log($"Drew card index: {currentCardIndex} | realVote: {realVote}");
     }
 
     private void SetBallotUI(GameObject cardRoot, string voteColor)
@@ -445,42 +424,26 @@ public class LevelManager : MonoBehaviour
 
         if (drawIndex >= deck.Length)
         {
-            Debug.Log("Last card was placed. Game over.");
             EndGame();
             return;
         }
-
-        Debug.Log("Vote placed. Press Space for next turn.");
     }
 
     public void ResolveChallenge(ProvStats prov)
     {
         if (prov == null) return;
 
-        Debug.Log("ResolveChallenge called for " + prov.gameObject.name);
-
         if (!prov.TryConsumeChallenge())
-        {
-            Debug.Log("Challenge ignored (already used) for " + prov.gameObject.name);
             return;
-        }
 
         bool conflict = prov.IsConflict();
         int liarTurn = prov.GetLiarTurn();
-
-        Debug.Log($"Challenge check: conflict={conflict} liarTurn={liarTurn} realVote={prov.GetRealVote()} vote={prov.vote}");
 
         if (conflict)
         {
             if (liarTurn == 1) RedHp = Mathf.Max(0, RedHp - 1);
             else if (liarTurn == 2) BlueHp = Mathf.Max(0, BlueHp - 1);
             else if (liarTurn == 3) GreenHp = Mathf.Max(0, GreenHp - 1);
-
-            Debug.Log($"HP updated => R:{RedHp} B:{BlueHp} G:{GreenHp}");
-        }
-        else
-        {
-            Debug.Log("No conflict. No HP change.");
         }
 
         UpdateHpUI();
