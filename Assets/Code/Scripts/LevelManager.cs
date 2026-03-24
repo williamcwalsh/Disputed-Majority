@@ -141,28 +141,58 @@ public class LevelManager : MonoBehaviour
             else if (ownerTurn == 3) greenTerr++;
         }
 
-        int maxTerr = Mathf.Max(redTerr, Mathf.Max(blueTerr, greenTerr));
+        int winnerTurn = GetWinnerByScore(redTerr, blueTerr, greenTerr);
 
-        bool redTop = redTerr == maxTerr;
-        bool blueTop = blueTerr == maxTerr;
-        bool greenTop = greenTerr == maxTerr;
+        Debug.Log($"END GAME SUMMARY | Red: {redTerr} territories, {RedHp} HP | Blue: {blueTerr} territories, {BlueHp} HP | Green: {greenTerr} territories, {GreenHp} HP");
+        Debug.Log(
+            $"GAME OVER COUNT | Terr => R:{redTerr} B:{blueTerr} G:{greenTerr} | HP => R:{RedHp} B:{BlueHp} G:{GreenHp} | winnerTurn={winnerTurn}");
 
-        int topCount = (redTop ? 1 : 0) + (blueTop ? 1 : 0) + (greenTop ? 1 : 0);
-
-        Debug.Log($"GAME OVER COUNT | Terr => R:{redTerr} B:{blueTerr} G:{greenTerr} | maxTerr={maxTerr} | topCount={topCount}");
-
-        if (topCount == 1)
+        if (winnerTurn == 0)
         {
-            if (redTop) ShowWinUI(1, false);
-            else if (blueTop) ShowWinUI(2, false);
-            else ShowWinUI(3, false);
-
-            Debug.Log("Winner chosen by territories.");
+            ShowWinUI(0, true);
+            Debug.Log("Territory and HP tie. Showing tie UI.");
             return;
         }
 
-        ShowWinUI(0, true);
-        Debug.Log("Territory tie. Showing tie UI.");
+        ShowWinUI(winnerTurn, false);
+        Debug.Log("Winner chosen by territories, then HP tiebreak.");
+    }
+
+    private int GetWinnerByScore(int redTerr, int blueTerr, int greenTerr)
+    {
+        int maxTerr = Mathf.Max(redTerr, Mathf.Max(blueTerr, greenTerr));
+
+        bool redTopTerr = redTerr == maxTerr;
+        bool blueTopTerr = blueTerr == maxTerr;
+        bool greenTopTerr = greenTerr == maxTerr;
+
+        int topTerrCount = (redTopTerr ? 1 : 0) + (blueTopTerr ? 1 : 0) + (greenTopTerr ? 1 : 0);
+        if (topTerrCount == 1)
+        {
+            if (redTopTerr) return 1;
+            if (blueTopTerr) return 2;
+            return 3;
+        }
+
+        int redScoreHp = redTopTerr ? RedHp : int.MinValue;
+        int blueScoreHp = blueTopTerr ? BlueHp : int.MinValue;
+        int greenScoreHp = greenTopTerr ? GreenHp : int.MinValue;
+
+        int maxHp = Mathf.Max(redScoreHp, Mathf.Max(blueScoreHp, greenScoreHp));
+
+        bool redTopHp = redScoreHp == maxHp;
+        bool blueTopHp = blueScoreHp == maxHp;
+        bool greenTopHp = greenScoreHp == maxHp;
+
+        int topHpCount = (redTopHp ? 1 : 0) + (blueTopHp ? 1 : 0) + (greenTopHp ? 1 : 0);
+        if (topHpCount == 1)
+        {
+            if (redTopHp) return 1;
+            if (blueTopHp) return 2;
+            return 3;
+        }
+
+        return 0;
     }
 
     private void UpdateHpUI()
