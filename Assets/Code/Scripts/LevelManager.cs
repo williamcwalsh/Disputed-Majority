@@ -3,9 +3,17 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class LevelManager : MonoBehaviour
 {
+    private class ProvinceOdds
+    {
+        public int red;
+        public int blue;
+        public int green;
+    }
+
     private static readonly Color CampaignRed = new Color(193f / 255f, 56f / 255f, 58f / 255f);
     private static readonly Color CampaignBlue = new Color(45f / 255f, 72f / 255f, 178f / 255f);
     private static readonly Color CampaignGreen = new Color(85f / 255f, 173f / 255f, 64f / 255f);
@@ -49,8 +57,17 @@ public class LevelManager : MonoBehaviour
     private static readonly string TurnNameBlue = "Blue";
     private static readonly string TurnNameGreen = "Green";
 
+    private readonly Dictionary<string, ProvinceOdds> provinceOdds = new Dictionary<string, ProvinceOdds>();
+    private TMP_Text pollText;
+    private GameObject pollBG;
+    private ProvStats selectedProvince;
+
     void Start()
     {
+        GenerateProvinceOdds();
+        CachePollUI();
+        UpdatePollUI(null);
+
         if (deck != null)
         {
             for (int i = 0; i < deck.Length; i++)
@@ -73,6 +90,8 @@ public class LevelManager : MonoBehaviour
     {
         if (gameOver) return;
 
+        HandleProvinceSelectionClick();
+
         if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
             EndTurn();
 
@@ -91,6 +110,19 @@ public class LevelManager : MonoBehaviour
         if (v == "blue") return 2;
         if (v == "green") return 3;
         return 0;
+    }
+
+    private string GetProvinceDisplayName(string provinceName)
+    {
+        if (provinceName == "p1") return "Pomirek";
+        if (provinceName == "p2") return "Tonali";
+        if (provinceName == "p3") return "Quirich";
+        if (provinceName == "p4") return "Licatia";
+        if (provinceName == "p5") return "Eritrea";
+        if (provinceName == "p6") return "Fornia";
+        if (provinceName == "p7") return "Leafswick";
+        if (provinceName == "p8") return "Cuddinham";
+        return provinceName;
     }
 
     private void ShowWinUI(int winnerTurn, bool isTie)
@@ -201,6 +233,163 @@ public class LevelManager : MonoBehaviour
         Debug.Log($"{prefix} | Red: {redTerr} territories, {RedHp} HP | Blue: {blueTerr} territories, {BlueHp} HP | Green: {greenTerr} territories, {GreenHp} HP");
     }
 
+    private void GenerateProvinceOdds()
+    {
+        provinceOdds.Clear();
+
+        var provs = FindObjectsOfType<ProvStats>();
+        for (int i = 0; i < provs.Length; i++)
+        {
+            var prov = provs[i];
+            if (prov == null) continue;
+
+            ProvinceOdds odds = CreateRandomOdds();
+            provinceOdds[prov.gameObject.name] = odds;
+
+            Debug.Log($"START GAME ODDS | {GetProvinceDisplayName(prov.gameObject.name)} | Red: {odds.red}% | Blue: {odds.blue}% | Green: {odds.green}%");
+        }
+    }
+
+    private void CachePollUI()
+    {
+        GameObject pollUI = GameObject.Find("PollUI");
+        if (pollUI == null) return;
+
+        Transform bgTransform = pollUI.transform.Find("PollBG");
+        if (bgTransform == null)
+            bgTransform = pollUI.transform.Find("Image");
+
+        if (bgTransform != null)
+            pollBG = bgTransform.gameObject;
+
+        Transform textTransform = pollUI.transform.Find("PollText");
+        if (textTransform == null)
+            textTransform = pollUI.transform.Find("Text (TMP)");
+
+        if (textTransform == null) return;
+
+        pollText = textTransform.GetComponent<TMP_Text>();
+    }
+
+    private void HandleProvinceSelectionClick()
+    {
+        if (Mouse.current == null) return;
+        if (!Mouse.current.leftButton.wasPressedThisFrame) return;
+
+        ProvStats prov = GetClickedProvince();
+        if (prov == null) return;
+
+        selectedProvince = prov;
+        UpdatePollUI(prov);
+    }
+
+    private ProvStats GetClickedProvince()
+    {
+        Camera cam = Camera.main;
+        if (cam == null) return null;
+
+        Vector3 w = cam.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+        Vector2 p = new Vector2(w.x, w.y);
+
+        Collider2D hit = Physics2D.OverlapPoint(p);
+        if (hit == null) return null;
+
+        ProvStats prov = hit.GetComponent<ProvStats>();
+        if (prov == null) prov = hit.GetComponentInParent<ProvStats>();
+        return prov;
+    }
+
+    private void UpdatePollUI(ProvStats prov)
+    {
+        if (pollText == null) return;
+
+        if (pollBG != null)
+            pollBG.SetActive(true);
+
+        if (prov == null)
+        {
+            pollText.text = "Poll\nR:\nB:\nG:\nResult: --";
+            return;
+        }
+
+        ProvinceOdds odds = GetProvinceOdds(prov.gameObject.name);
+        string resultText = string.IsNullOrEmpty(prov.vote) ? "--" : prov.vote.ToUpper();
+
+        pollText.text =
+            $"{GetProvinceDisplayName(prov.gameObject.name)}\n" +
+            "Poll\n" +
+            $"R: {odds.red}%\n" +
+            $"B: {odds.blue}%\n" +
+            $"G: {odds.green}%\n" +
+            $"Result: {resultText}";
+    }
+
+    private ProvinceOdds GetProvinceOdds(string provinceName)
+    {
+        if (provinceOdds.TryGetValue(provinceName, out ProvinceOdds odds))
+            return odds;
+
+        ProvinceOdds fallback = new ProvinceOdds();
+        fallback.red = 0;
+        fallback.blue = 0;
+        fallback.green = 0;
+        return fallback;
+    }
+
+    private ProvinceOdds CreateRandomOdds()
+    {
+        int cutA = Random.Range(0, 101);
+        int cutB = Random.Range(0, 101);
+
+        if (cutA > cutB)
+        {
+            int temp = cutA;
+            cutA = cutB;
+            cutB = temp;
+        }
+
+        ProvinceOdds odds = new ProvinceOdds();
+        odds.red = cutA;
+        odds.blue = cutB - cutA;
+        odds.green = 100 - cutB;
+        return odds;
+    }
+
+    private string GetProvinceNameForCard(GameObject card)
+    {
+        if (card == null) return "";
+
+        string cardName = card.name;
+        int number = 0;
+
+        for (int i = 0; i < cardName.Length; i++)
+        {
+            char c = cardName[i];
+            if (c < '0' || c > '9') continue;
+
+            number = (number * 10) + (c - '0');
+        }
+
+        if (number <= 0) return "";
+        return "p" + number;
+    }
+
+    private string RollVoteForProvince(string provinceName)
+    {
+        if (!provinceOdds.TryGetValue(provinceName, out ProvinceOdds odds))
+        {
+            int fallbackRoll = Random.Range(0, 3);
+            if (fallbackRoll == 0) return "red";
+            if (fallbackRoll == 1) return "blue";
+            return "green";
+        }
+
+        int roll = Random.Range(0, 100);
+        if (roll < odds.red) return "red";
+        if (roll < odds.red + odds.blue) return "blue";
+        return "green";
+    }
+
     private void UpdateHpUI()
     {
         SetHpRow(redHpRects, RedHp);
@@ -233,18 +422,7 @@ public class LevelManager : MonoBehaviour
         if (Mouse.current == null) return;
         if (!Mouse.current.leftButton.wasPressedThisFrame) return;
 
-        Camera cam = Camera.main;
-        if (cam == null)
-            return;
-
-        Vector3 w = cam.ScreenToWorldPoint(Mouse.current.position.ReadValue());
-        Vector2 p = new Vector2(w.x, w.y);
-
-        Collider2D hit = Physics2D.OverlapPoint(p);
-        if (hit == null) return;
-
-        ProvStats prov = hit.GetComponent<ProvStats>();
-        if (prov == null) prov = hit.GetComponentInParent<ProvStats>();
+        ProvStats prov = GetClickedProvince();
         if (prov == null) return;
 
         if (hasAccusedThisTurn) return;
@@ -357,10 +535,8 @@ public class LevelManager : MonoBehaviour
         currentCardIndex = drawIndex;
         drawIndex++;
 
-        int roll = Random.Range(0, 3);
-        if (roll == 0) realVote = "red";
-        else if (roll == 1) realVote = "blue";
-        else realVote = "green";
+        string provinceName = GetProvinceNameForCard(deck[currentCardIndex]);
+        realVote = RollVoteForProvince(provinceName);
 
         SetBallotUI(deck[currentCardIndex], realVote);
     }
@@ -417,7 +593,11 @@ public class LevelManager : MonoBehaviour
 
         ProvStats stats = p.GetComponent<ProvStats>();
         if (stats != null)
+        {
             stats.setVote(vote, realVote, turn);
+            if (selectedProvince == stats)
+                UpdatePollUI(stats);
+        }
 
         HideActiveCard();
         turnLocked = true;
@@ -448,6 +628,8 @@ public class LevelManager : MonoBehaviour
 
         UpdateHpUI();
         prov.RevealTruth(this);
+        if (selectedProvince == prov)
+            UpdatePollUI(prov);
     }
 
     public void setP1Red() { PickProvince("p1", CampaignRed, "red"); }
